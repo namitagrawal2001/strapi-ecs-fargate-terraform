@@ -20,14 +20,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Apply (create infra if needed)
+        run: terraform apply -auto-approve
+        working-directory: terraform
 
       - name: Get ECR repo URL
-        id: ecr
         run: |
-          ECR_URL=$(terraform -chdir=terraform output -raw ecr_repo_url)
+          ECR_URL=$(terraform output -raw ecr_repo_url)
           echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
+        working-directory: terraform
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker image
         run: docker build -t $ECR_URL:latest ./app
@@ -35,10 +46,6 @@ jobs:
       - name: Push Docker image
         run: docker push $ECR_URL:latest
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform
-
-      - name: Terraform Apply
+      - name: Terraform Apply (update ECS)
         run: terraform apply -auto-approve
         working-directory: terraform
