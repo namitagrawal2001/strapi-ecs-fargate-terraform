@@ -33,4 +33,5 @@ crash.log
 # OS
 .DS_Store
 Thumbs.db
+terraform.tfstate
 
