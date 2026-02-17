@@ -18,6 +18,11 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/strapi"
+  retention_in_days = 7
+}
+
 resource "aws_ecs_task_definition" "task" {
   family                   = "strapi-task"
   requires_compatibilities = ["FARGATE"]
@@ -25,15 +30,27 @@ resource "aws_ecs_task_definition" "task" {
   memory                   = "512"
   network_mode             = "awsvpc"
 
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+
   container_definitions = jsonencode([
     {
       name  = "strapi"
       image = "${aws_ecr_repository.repo.repository_url}:${var.image_tag}"
+
       portMappings = [
         {
           containerPort = 1337
         }
       ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_logs.name
+          awslogs-region        = "ap-south-1"
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 }
