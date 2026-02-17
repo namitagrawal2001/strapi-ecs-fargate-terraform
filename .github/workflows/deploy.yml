@@ -20,7 +20,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Login ECR
+      - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build image
@@ -32,7 +32,7 @@ jobs:
       - name: Push image
         run: docker push 663959447043.dkr.ecr.ap-south-1.amazonaws.com/strapi-ecs:latest
 
-      - name: Restart ECS
+      - name: Force ECS deployment
         run: |
           aws ecs update-service \
             --cluster strapi-cluster \
