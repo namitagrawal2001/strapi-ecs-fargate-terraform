@@ -13,6 +13,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -20,14 +23,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
       - name: Terraform Init
         run: terraform init
         working-directory: terraform
 
-      - name: Terraform Apply (create infra if needed)
+      - name: Terraform Apply (create infra)
         run: terraform apply -auto-approve
         working-directory: terraform
 
@@ -46,6 +46,6 @@ jobs:
       - name: Push Docker image
         run: docker push $ECR_URL:latest
 
-      - name: Terraform Apply (update ECS)
+      - name: Terraform Apply (deploy ECS)
         run: terraform apply -auto-approve
         working-directory: terraform
