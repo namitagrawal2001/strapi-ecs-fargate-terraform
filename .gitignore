@@ -21,8 +21,8 @@ logs/
 
 # Terraform
 .terraform/
-terraform.tfstate
-terraform.tfstate.*
+*.tfstate
+*.tfstate.*
 crash.log
 *.tfvars
 
@@ -33,5 +33,3 @@ crash.log
 # OS
 .DS_Store
 Thumbs.db
-terraform.tfstate
-
