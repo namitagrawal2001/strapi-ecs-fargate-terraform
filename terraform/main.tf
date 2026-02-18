@@ -1,3 +1,11 @@
+terraform {
+  backend "s3" {
+    bucket = "namit-tf-state-bucket"
+    key    = "strapi/terraform.tfstate"
+    region = "ap-south-1"
+  }
+}
+
 provider "aws" {
   region = "ap-south-1"
 }

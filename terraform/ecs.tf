@@ -1,6 +1,7 @@
+# Security Group
 resource "aws_security_group" "ecs_sg" {
   name        = "strapi-sg"
-  description = "Allow Strapi"
+  description = "Allow Strapi access"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
@@ -18,11 +19,13 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
+# CloudWatch Logs
 resource "aws_cloudwatch_log_group" "ecs_logs" {
   name              = "/ecs/strapi"
   retention_in_days = 7
 }
 
+# Task Definition
 resource "aws_ecs_task_definition" "task" {
   family                   = "strapi-task"
   requires_compatibilities = ["FARGATE"]
@@ -34,13 +37,30 @@ resource "aws_ecs_task_definition" "task" {
 
   container_definitions = jsonencode([
     {
-      name  = "strapi"
-      image = "${aws_ecr_repository.repo.repository_url}:${var.image_tag}"
+      name      = "strapi"
+      image     = "${aws_ecr_repository.repo.repository_url}:${var.image_tag}"
+      essential = true
 
       portMappings = [
         {
           containerPort = 1337
+          hostPort      = 1337
+          protocol      = "tcp"
         }
+      ]
+
+      environment = [
+        { name = "HOST", value = "0.0.0.0" },
+        { name = "PORT", value = "1337" },
+
+        { name = "APP_KEYS", value = "key1,key2,key3,key4" },
+        { name = "API_TOKEN_SALT", value = "salt123" },
+
+        { name = "ADMIN_JWT_SECRET", value = "adminsecret123" },
+        { name = "JWT_SECRET", value = "jwtsecret123" },
+        { name = "ADMIN_AUTH_SECRET", value = "supersecret123" },
+
+        { name = "NODE_ENV", value = "production" }
       ]
 
       logConfiguration = {
@@ -55,6 +75,7 @@ resource "aws_ecs_task_definition" "task" {
   ])
 }
 
+# ECS Service
 resource "aws_ecs_service" "service" {
   name            = "strapi-service"
   cluster         = aws_ecs_cluster.cluster.id
@@ -63,8 +84,12 @@ resource "aws_ecs_service" "service" {
   desired_count   = 1
 
   network_configuration {
-    subnets         = data.aws_subnets.default.ids
-    security_groups = [aws_security_group.ecs_sg.id]
+    subnets          = data.aws_subnets.default.ids
+    security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_execution_policy
+  ]
 }

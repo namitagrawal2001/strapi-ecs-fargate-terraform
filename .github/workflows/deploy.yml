@@ -1,35 +1,50 @@
-name: Deploy Strapi ECS
+name: Deploy Strapi to ECS
 
 on:
   push:
     branches:
       - main
 
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: strapi-ecs
+  ECS_CLUSTER: strapi-cluster
+  ECS_SERVICE: strapi-service
+  IMAGE_TAG: latest
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    env:
-      IMAGE_TAG: latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Configure AWS
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+          | docker login --username AWS --password-stdin 663959447043.dkr.ecr.ap-south-1.amazonaws.com
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -var="image_tag=${{ env.IMAGE_TAG }}"
-        working-directory: terraform
+      - name: Build Docker image
+        run: docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+
+      - name: Tag image
+        run: docker tag $ECR_REPOSITORY:$IMAGE_TAG 663959447043.dkr.ecr.ap-south-1.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Push image
+        run: docker push 663959447043.dkr.ecr.ap-south-1.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Force new deployment
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment \
+            --region $AWS_REGION
